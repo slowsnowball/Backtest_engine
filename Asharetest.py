@@ -42,36 +42,10 @@ def get_order_days(freq):
     return days
 
 
-def cal_position(pb, max_pos):
-    if pb > 2.0:
-        return 0
-    else:
-        return min(2 - pb, max_pos)
-
-
-def pos(pb0, pb1):
-    if pb0 < pb1:
-        pos0 = cal_position(pb0, 0.7)
-        pos1 = cal_position(pb1, 1 - pos0)
-    else:
-        pos1 = cal_position(pb1, 0.7)
-        pos0 = cal_position(pb0, 1 - pos1)
-    return [pos0, pos1]
-
-
 def handle_data(date):
-    pb = pd.Series()
     positions = pd.Series()
-    ini_dic1 = {}
-    ini_dic1['600036.XSHG'] = pd.read_csv('file:///Users/liushihao/emacs/\
-python/600036.XSHG.csv', index_col=0)
-    ini_dic1['601166.XSHG'] = pd.read_csv('file:///Users/liushihao/emacs/\
-python/601166.XSHG.csv', index_col=0)
     for stock in universe:
-        stock_data = ini_dic1[stock].loc[date.strftime('%Y/%-m/%-d')]
-        pb[stock] = stock_data['PB']
-    positions['600036.XSHG'] = pos(pb['600036.XSHG'], pb['601166.XSHG'])[0]
-    positions['601166.XSHG'] = pos(pb['600036.XSHG'], pb['601166.XSHG'])[1]
+        positions[stock] = 0.5
     order_pct_to(positions)
 
 
@@ -144,16 +118,16 @@ def order_pct_to(target):
     ret = ret.append(pd.DataFrame(
         {'rev': (capital[-1]-capital[0])/capital[0],
          'max_drawdown': history_max,
-         'benchmark': (benchmark.loc[date.strftime('%Y/%-m/%-d'), 'closeIndex']
+         'benchmark': (benchmark.loc[date.strftime('%Y/%-m/%-d'), 'openIndex']
                        -
-                       benchmark.loc['2015/1/5', 'closeIndex']) /
-         benchmark.loc['2015/12/31', 'closeIndex']}, index=[date]))
+                       benchmark.loc['2015/1/5', 'openIndex']) /
+         benchmark.loc['2015/1/5', 'openIndex']}, index=[date]))
 
     n += 1
 
 
 def result_display():
-    # ret.to_csv('return_details.csv')
+    ret.to_csv('return_details.csv')
     # strategy annual return
     Ra = ((1+(ret.iloc[-1].rev))**(250/n)) - 1
     df = pd.DataFrame({'benchmark return':
@@ -178,7 +152,7 @@ def result_display():
 
     # plot the results
     ret['rev'].plot(color='royalblue', label='strategy return')
-    ret['benchmark'].plot(color='firebrick', label='benchmark return')
+    ret['benchmark'].plot(color='black', label='benchmark return')
     x = np.array(list(ret.index))
     plt.fill_between(x, max(max(ret.rev), max(ret.benchmark)),
                      min(min(ret.rev), min(ret.benchmark)),
