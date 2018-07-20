@@ -32,61 +32,59 @@ class account:
         self.tax = tax
         self.commission = commission
         self.slippage = slippage
-        self.ini_dic = {}
-        self.benchmark_data = pd.DataFrame()
+
+        self.ini_dic = None
+        self.benchmark_data = None
         self.trade_days = None
         self.order_days = None
         self.today_capital = None
-        self.ret = pd.DataFrame()
-        self.history_max = 0
+        self.ret = None
+        self.history_max = None
         self.drawdown_start = None
         self.drawdown_end = None
+        self.capital = None
+        self.cash = None
+
+    def setup(self):
+        """
+        Set up the ini_dic, benchmark_data, trade_days and order_days.
+        """
+        self.ini_dic = {}
+        self.ret = pd.DataFrame()
+        self.benchmark_data = pd.DataFrame()
+        self.history_max = 0
         self.capital = []
         self.cash = capital_base
+
+        for stock in self.universe:
+            try:
+                data = ssdata.get_data(secid=stock,
+                                       start_date=self.start_date,
+                                       end_date=self.end_date,
+                                       field='open').sort_index()
+                self.ini_dic[stock] = data
+            except Exception:
+                self.universe.remove(stock)
+                print("Stock ", stock, " data unavailable.")
+
+        try:
+            data = ssdata.get_data(secid=self.benchmark,
+                                   start_date=self.start_date,
+                                   end_date=self.end_date,
+                                   field='open').sort_index()
+            self.benchmark_data = self.benchmark_data.append(data)
+        except Exception:
+            print("Benchmark ", self.benchmark, " data unavailable.")
+        self.trade_days = self.ini_dic[self.universe[0]].index
+        self.order_days = []
+        for i in range(len(list(self.trade_days))):
+            if i % self.freq == 0:
+                self.order_days.append(list(self.trade_days)[i])
 
 
 ###############################################################################
 #                          Define framework functions                         #
 ###############################################################################
-
-def account_setup(account):
-    """
-    Set up the ini_dic, trade_days and order_days of account.
-    """
-    for stock in account.universe:
-        try:
-            data = ssdata.get_data(secid=stock,
-                                   start_date=account.start_date,
-                                   end_date=account.end_date,
-                                   field='open').sort_index()
-            account.ini_dic[stock] = data
-        except Exception:
-            account.universe.remove(stock)
-            print("Stock ", stock, " data unavailable.")
-
-    try:
-        data = ssdata.get_data(secid=account.benchmark,
-                               start_date=account.start_date,
-                               end_date=account.end_date,
-                               field='open').sort_index()
-        account.benchmark_data = account.benchmark_data.append(data)
-    except Exception:
-        print("Benchmark ", account.benchmark, " data unavailable.")
-    account.trade_days = account.ini_dic[account.universe[0]].index
-    account.order_days = get_order_days(account)
-
-
-def get_order_days(account):
-    """
-    Get order days based on frequency.
-    """
-    tdays = list(account.trade_days)
-    days = []
-    for i in range(len(tdays)):
-        if i % account.freq == 0:
-            days.append(tdays[i])
-    return days
-
 
 def order_to(target):
     global h_amount
@@ -188,7 +186,8 @@ def order_to(target):
          (account.benchmark_data.loc[date.strftime('%Y-%m-%d'), 'open'] -
           account.benchmark_data.loc[trade_days[0].strftime('%Y-%m-%d'),
                                      'open']) /
-         account.benchmark_data.loc[trade_days[0].strftime('%Y-%m-%d'), 'open']},
+         account.benchmark_data.loc[trade_days[0].strftime('%Y-%m-%d'),
+                                    'open']},
         index=[date]))
 
 
@@ -286,7 +285,7 @@ def handle_data(account):
 account = account(start_date=start_date, end_date=end_date,
                   capital_base=capital_base, freq=freq,
                   benchmark=benchmark, universe=universe)
-account_setup(account)
+account.setup()
 initialize(account)
 
 h_amount = pd.DataFrame({'hamount': [0],
