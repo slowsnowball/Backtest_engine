@@ -76,10 +76,18 @@ class account:
         except Exception:
             print("Benchmark ", self.benchmark, " data unavailable.")
         self.trade_days = self.ini_dic[self.universe[0]].index
-        self.order_days = []
-        for i in range(len(list(self.trade_days))):
+        self.order_days = self.get_order_days()
+
+    def get_order_days(self):
+        """
+        Return the list of order days based on frequency.
+        """
+        tdays = list(self.trade_days)
+        odays = []
+        for i in range(len(tdays)):
             if i % self.freq == 0:
-                self.order_days.append(list(self.trade_days)[i])
+                odays.append(tdays[i])
+        return odays
 
 
 ###############################################################################
