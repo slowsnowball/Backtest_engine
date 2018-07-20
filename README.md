@@ -1,5 +1,5 @@
 # Backtest Engine
-1. delete the "Parameters and functions set up manually" region.
+1. Delete the "Parameters and functions set up manually" region.
 
 2. Import this module.
 
