@@ -102,6 +102,7 @@ def order_to(target):
     commission = account.commission
     ini_dic = account.ini_dic
     today_capital = account.today_capital
+    slippage = account.slippage
 
     if date in order_days:
         print(date.strftime('%Y-%m-%d'), list(target.index))
@@ -113,7 +114,7 @@ def order_to(target):
                 stock_data = ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
                 price = stock_data['open']
                 account.cash += h_amount.loc[stock, 'hamount'] *\
-                    (price-0.01) * (1-tax-commission)
+                    (price-slippage) * (1-tax-commission)
                 print('order: ', stock, 'amount ',
                       int(0-h_amount.loc[stock, 'hamount']))
                 h_amount.drop(stock)
@@ -138,7 +139,7 @@ def order_to(target):
                > 0:
                 account.cash += (h_amount.loc[stock, 'hamount'] -
                                  t_amount.loc[stock, 'tamount'])\
-                                 * (price-0.01) * (1-tax-commission)
+                                 * (price-slippage) * (1-tax-commission)
 
             # If hoding < target, buy
             if h_amount.loc[stock, 'hamount'] - t_amount.loc[stock, 'tamount']\
@@ -148,12 +149,12 @@ def order_to(target):
                                     0, -1):
                     if account.cash - (number*100 -
                                        h_amount.loc[stock, 'hamount']) *\
-                       (price+0.01) * (1+commission) < 0:
+                       (price+slippage) * (1+commission) < 0:
                         continue
                     else:
                         account.cash -= (number*100 -
                                          h_amount.loc[stock, 'hamount']) *\
-                            (price+0.01) * (1+commission)
+                            (price+slippage) * (1+commission)
                         t_amount.loc[stock, 'tamount'] = number * 100
                         break
 
