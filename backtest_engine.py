@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 import pandas as pd
 import math
 import ssdata
@@ -9,6 +8,7 @@ import matplotlib.pyplot as plt
 ###############################################################################
 #                           Define framework classes                          #
 ###############################################################################
+
 
 class account:
     def __init__(self, start_date, end_date, capital_base, freq, benchmark,
@@ -33,49 +33,73 @@ class account:
         self.commission = commission
         self.slippage = slippage
 
+        # 存储股票数据的字典，key是股票代码，value是一个以时间为索引的dataframe
         self.ini_dic = None
+        # 存储基准证券数据的dataframe
         self.benchmark_data = None
+        # 从起始日期到终止日期之间的交易日列表
         self.trade_days = None
+        # 根据交易日列表和设定的交易频率得出的下单日
         self.order_days = None
+        # 每个交易日的总资产，用来计算收益率
         self.today_capital = None
+        # 存储收益情况的dataframe，索引是日期，列有策略收益率、基准收益率、最大回撤、
+        # 最大回撤区间
         self.ret = None
+        # 历史最大回撤
         self.history_max = None
+        # 历史最大回撤区间起始日
         self.drawdown_start = None
+        # 历史最大回撤区间终止日
         self.drawdown_end = None
+        # 存储每个交易日总资产的列表
         self.capital = None
+        # 现金
         self.cash = None
 
     def setup(self):
         """
-        Set up the ini_dic, benchmark_data, trade_days and order_days.
+        用来初始化账户，得到ini_dic, benchmark_data, trade_days 和 order_days等。
         """
+        # 初始化这些变量
         self.ini_dic = {}
         self.ret = pd.DataFrame()
         self.benchmark_data = pd.DataFrame()
         self.history_max = 0
         self.capital = []
-        self.cash = capital_base
+        self.cash = self.capital_base
 
+        # 遍历universe，通过ssdata包获取股票数据，存入ini_dic
+        # 注：新三板股票都是月度数据
         for stock in self.universe:
+            # 使用try-except是为了防止获取不到某些数据
             try:
+                # 得到的data是一个dataframe
                 data = ssdata.get_data(secid=stock,
                                        start_date=self.start_date,
                                        end_date=self.end_date,
-                                       field='open').sort_index()
+                                       field='open,yoyop').dropna()
                 self.ini_dic[stock] = data
+                print("Succeed: ", stock)
             except Exception:
-                self.universe.remove(stock)
-                print("Stock ", stock, " data unavailable.")
+                print(stock, "data unavailable.")
 
+        # 把获取不到数据的股票从universe中去掉
+        self.universe = list(self.ini_dic.keys())
+
+        # 获取benchmark的数据
         try:
             data = ssdata.get_data(secid=self.benchmark,
                                    start_date=self.start_date,
                                    end_date=self.end_date,
-                                   field='open').sort_index()
+                                   field='open').sort_index().dropna()
             self.benchmark_data = self.benchmark_data.append(data)
         except Exception:
             print("Benchmark ", self.benchmark, " data unavailable.")
+
+        # 交易日列表
         self.trade_days = self.ini_dic[self.universe[0]].index
+        # 调用下面的get_order_days函数算出下单日列表
         self.order_days = self.get_order_days()
 
     def get_order_days(self):
@@ -84,6 +108,7 @@ class account:
         """
         tdays = list(self.trade_days)
         odays = []
+        # 遍历tdays，如果能够整除freq，则说明在下单日，将其存入odays
         for i in range(len(tdays)):
             if i % self.freq == 0:
                 odays.append(tdays[i])
@@ -94,7 +119,11 @@ class account:
 #                          Define framework functions                         #
 ###############################################################################
 
+
 def order_to(target):
+    """
+    下单到多少股。
+    """
     global h_amount
     trade_days = account.trade_days
     order_days = account.order_days
@@ -103,25 +132,33 @@ def order_to(target):
     ini_dic = account.ini_dic
     today_capital = account.today_capital
     slippage = account.slippage
+    # print("initial cash: ", account.cash)
 
+    # 如果date在下单日，就需要进行调仓
     if date in order_days:
-        print(date.strftime('%Y-%m-%d'), list(target.index))
+        # print(date.strftime('%Y-%m-%d'), list(target.index))
+        # t_amount是目标仓位数据的dataframe
         t_amount = pd.DataFrame({'tamount': [0]}, index=list(target.index))
 
         # Sell stocks in holding but not in target
         for stock in list(h_amount.index):
             if stock not in list(target.index):
-                stock_data = ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
+                stock_data = ini_dic[stock].loc[date.strftime(
+                    '%Y-%m-%d')].fillna(0)
                 price = stock_data['open']
                 account.cash += h_amount.loc[stock, 'hamount'] *\
                     (price-slippage) * (1-tax-commission)
+                # print("cash after", stock, account.cash)
                 print('order: ', stock, 'amount ',
                       int(0-h_amount.loc[stock, 'hamount']))
-                h_amount.drop(stock)
+                h_amount.loc[stock, 'hamount'] = 0
+        h_amount = h_amount[h_amount['hamount'] != 0]
+        # print("cash: ", account.cash)
 
         # Deal with stocks in target
         for stock in list(target.index):
-            stock_data = ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
+            stock_data = ini_dic[stock].loc[date.strftime(
+                '%Y-%m-%d')].fillna(0)
             price = stock_data['open']
 
             # Buy stocks in target but not in holding
@@ -131,7 +168,7 @@ def order_to(target):
                                                          'value': [0],
                                                          'percent': [0]},
                                                         index=[stock]))
-
+            # print(target)
             t_amount.loc[stock, 'tamount'] = math.floor(target[stock]/100)*100
 
             # If hoding > target, sell
@@ -139,7 +176,7 @@ def order_to(target):
                > 0:
                 account.cash += (h_amount.loc[stock, 'hamount'] -
                                  t_amount.loc[stock, 'tamount'])\
-                                 * (price-slippage) * (1-tax-commission)
+                    * (price-slippage) * (1-tax-commission)
 
             # If hoding < target, buy
             if h_amount.loc[stock, 'hamount'] - t_amount.loc[stock, 'tamount']\
@@ -182,10 +219,10 @@ def order_to(target):
         drawdown = 0
 
     if drawdown > account.history_max:
-        account.drawdown_start =\
-            trade_days[account.capital.index(max(account.capital[:-1]))]
-        account.drawdown_end =\
-            trade_days[account.capital.index(account.capital[-1])]
+        # account.drawdown_start =\
+        #    trade_days[account.capital.index(max(account.capital[:-1]))]
+        # account.drawdown_end =\
+        #     trade_days[account.capital.index(account.capital[-1])]
         account.history_max = drawdown
 
     account.ret = account.ret.append(pd.DataFrame(
@@ -201,15 +238,22 @@ def order_to(target):
 
 
 def order_pct_to(pct_target):
+    """
+    下单到多少百分比。
+    """
     ini_dic = account.ini_dic
     today_capital = account.today_capital
+    # target是存储目标股数的Series
     target = pd.Series()
 
+    # 将pct_target中的仓位百分比数据转化为target中的股数
     for stock in list(pct_target.index):
         stock_data = ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
+        # stock_data = ini_dic[stock].loc[date]
         price = stock_data['open']
         target[stock] = (pct_target[stock]*today_capital) / price
 
+    # 调用order_to函数
     order_to(target)
 
 
@@ -221,7 +265,7 @@ def result_display(account):
     # account.ret.to_csv('return_details.csv')
     # strategy annual return
     Ra = (1+(account.ret.iloc[-1].rev)) **\
-        (250/len(list(account.trade_days))) - 1
+        (12/len(list(account.trade_days))) - 1
     results = pd.DataFrame({'benchmark return':
                             '%.2f%%' % (account.ret.iloc[-1].benchmark * 100),
                             'Strategy return':
@@ -229,29 +273,31 @@ def result_display(account):
                             'Strategy annual return':
                             '%.2f%%' % (Ra*100),
                             'Max drawdown':
-                            '%.2f%%' % (account.ret.iloc[-1].max_drawdown*100),
-                            'Max drawdown interval':
-                            str(account.drawdown_start.strftime('%Y-%m-%d')
-                                + ' to '
-                                + account.drawdown_end.strftime('%Y-%m-%d'))},
+                            '%.2f%%' % (account.ret.iloc[-1].max_drawdown*100)
+                            #                            ,'Max drawdown interval':
+                            #                            str(account.drawdown_start.strftime('%Y-%m-%d')
+                            #                                + ' to '
+                            #                                + account.drawdown_end.strftime('%Y-%m-%d'))
+                            },
                            index=[''])
     results.reindex(['benchmark return',
                      'Strategy return',
                      'Strategy annual return',
-                     'Max drawdown',
-                     'Max drawdown interval'], axis=1)
+                     'Max drawdown'
+                     #                     ,'Max drawdown interval'
+                     ], axis=1)
     print(results.transpose())
 
     # plot the results
     account.ret['rev'].plot(color='royalblue', label='strategy return')
     account.ret['benchmark'].plot(color='black', label='benchmark return')
-    x = np.array(list(account.ret.index))
-    plt.fill_between(x, max(max(account.ret.rev), max(account.ret.benchmark)),
-                     min(min(account.ret.rev), min(account.ret.benchmark)),
-                     where=((x <= account.drawdown_end) &
-                            (x >= account.drawdown_start)),
-                     facecolor='lightsteelblue',
-                     alpha=0.4)
+#    x = np.array(list(account.ret.index))
+#   plt.fill_between(x, max(max(account.ret.rev), max(account.ret.benchmark)),
+#                     min(min(account.ret.rev), min(account.ret.benchmark)),
+#                     where=((x <= account.drawdown_end) &
+#                            (x >= account.drawdown_start)),
+#                     facecolor='lightsteelblue',
+#                     alpha=0.4)
     plt.legend()
     plt.show()
 
@@ -259,14 +305,6 @@ def result_display(account):
 ###############################################################################
 #                   Parameters and functions set up manually                  #
 ###############################################################################
-
-print("Hello world!")
-start_date = '2015-01-01'
-end_date = '2016-01-01'
-capital_base = 1000000
-freq = 1
-benchmark = ['000001.XSHE']
-universe = ['600036.XSHG', '601166.XSHG']
 
 
 def initialize(account):
@@ -276,15 +314,52 @@ def initialize(account):
     pass
 
 
+def stock_filter(account):
+    """
+    根据yoyop进行选股的函数。选yoyop前50的股票。
+    """
+    # 将date这一交易日的股票数据取出存到一个新的dataframe中
+    all_stock_df = pd.DataFrame()
+    # 遍历ini_dic中所有的股票
+    for stock in list(account.ini_dic.keys()):
+        # 将date这一天的数据存入all_stock_df中
+        all_stock_df = all_stock_df.append(account.ini_dic[stock].
+                                           loc[date.strftime('%Y-%m-%d')])
+
+    # 去掉含有NaN值的股票，按yoyop降序排序
+    all_stock_df = all_stock_df.dropna().sort_values('yoyop', ascending=False)
+    # 取前50支股票
+    selected_stock_df = all_stock_df[:50]
+    # 将选取的股票代码存入buylist
+    buylist = list(selected_stock_df['secid'])
+    # 输出选股情况
+    print(date.strftime('%Y-%m-%d'), "selected stocks: ", buylist)
+    return buylist
+
+
 def handle_data(account):
     """
     This is a function that runs every backtest frequency.
     """
+    # selected_stocks为上述选股函数选出的函数
+    selected_stocks = stock_filter(account)
+    # print(selected_stocks)
+    # positions为声明的一个存储目票仓位情况的Series
     positions = pd.Series()
-    for stock in account.universe:
-        positions[stock] = 0.5
+    # 这里采用平均配仓的方式
+    for stock in selected_stocks:
+        positions[stock] = 1/len(selected_stocks)
+    # 将仓位传入下单函数进行下单
     order_pct_to(positions)
 
+
+print("Hello world!")
+start_date = '2018-01-01'
+end_date = '2018-07-27'
+capital_base = 1000000
+freq = 1
+benchmark = ['430002.OC']
+universe = list(pd.read_csv("All stocks.csv")['secid'])[:75]
 
 ###############################################################################
 #                               Backtest begins                               #
@@ -300,16 +375,20 @@ initialize(account)
 h_amount = pd.DataFrame({'hamount': [0],
                          'price': [0],
                          'value': [0],
-                         'percent': [0]}, index=universe)
+                         'percent': [0]}, index=account.universe)
 
-for date in account.trade_days:
+for date in list(account.trade_days):
     account.today_capital = 0
     for stock in list(h_amount.index):
-        stock_data = account.ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
+        stock_data = account.ini_dic[stock].loc[date.strftime('%Y-%m-%d')].\
+            fillna(0)
+        # stock_data = account.ini_dic[stock].loc[date]
         price = stock_data['open']
         account.today_capital += price * h_amount.loc[stock, 'hamount']
     account.today_capital += account.cash
 
+    print("cash: ", account.cash)
+    print("today_capital: ", account.today_capital)
     handle_data(account)
 
 result_display(account)

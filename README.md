@@ -1,9 +1,9 @@
 # Backtest Engine
-1. Delete the "Parameters and functions set up manually" region.
+## Delete the "Parameters and functions set up manually" region.
 
-2. Import this module.
+## Import this module.
 
-3. Set your own parameters and functions.
+## Set your own parameters and functions.
 
 Basic parameters include start_date, end_date, capital_base, freq, benchmark, universe. Tax, commission, slippage will be set to 0.001, 0.00025, 0.01 by default.
 
@@ -13,4 +13,4 @@ Function initialize(account) will be run only once when the backtest starts, and
 
 More functions will be added to this module in the future. :)
 
-4. When all set up, just run your code. 
+## When all set up, just run your code. 
