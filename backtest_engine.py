@@ -3,6 +3,7 @@ import pandas as pd
 import math
 import ssdata
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 ###############################################################################
@@ -219,10 +220,10 @@ def order_to(target):
         drawdown = 0
 
     if drawdown > account.history_max:
-        # account.drawdown_start =\
-        #    trade_days[account.capital.index(max(account.capital[:-1]))]
-        # account.drawdown_end =\
-        #     trade_days[account.capital.index(account.capital[-1])]
+        account.drawdown_start =\
+            trade_days[account.capital.index(max(account.capital[:-1]))]
+        account.drawdown_end =\
+            trade_days[account.capital.index(account.capital[-1])]
         account.history_max = drawdown
 
     account.ret = account.ret.append(pd.DataFrame(
@@ -249,7 +250,6 @@ def order_pct_to(pct_target):
     # 将pct_target中的仓位百分比数据转化为target中的股数
     for stock in list(pct_target.index):
         stock_data = ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
-        # stock_data = ini_dic[stock].loc[date]
         price = stock_data['open']
         target[stock] = (pct_target[stock]*today_capital) / price
 
@@ -273,31 +273,30 @@ def result_display(account):
                             'Strategy annual return':
                             '%.2f%%' % (Ra*100),
                             'Max drawdown':
-                            '%.2f%%' % (account.ret.iloc[-1].max_drawdown*100)
-                            #                            ,'Max drawdown interval':
-                            #                            str(account.drawdown_start.strftime('%Y-%m-%d')
-                            #                                + ' to '
-                            #                                + account.drawdown_end.strftime('%Y-%m-%d'))
+                            '%.2f%%' % (account.ret.iloc[-1].max_drawdown*100), 'Max drawdown interval':
+                            str(account.drawdown_start.strftime('%Y-%m-%d')
+                                + ' to '
+                                + account.drawdown_end.strftime('%Y-%m-%d'))
                             },
                            index=[''])
     results.reindex(['benchmark return',
                      'Strategy return',
                      'Strategy annual return',
                      'Max drawdown'
-                     #                     ,'Max drawdown interval'
+                     'Max drawdown interval'
                      ], axis=1)
     print(results.transpose())
 
     # plot the results
     account.ret['rev'].plot(color='royalblue', label='strategy return')
     account.ret['benchmark'].plot(color='black', label='benchmark return')
-#    x = np.array(list(account.ret.index))
-#   plt.fill_between(x, max(max(account.ret.rev), max(account.ret.benchmark)),
-#                     min(min(account.ret.rev), min(account.ret.benchmark)),
-#                     where=((x <= account.drawdown_end) &
-#                            (x >= account.drawdown_start)),
-#                     facecolor='lightsteelblue',
-#                     alpha=0.4)
+    x = np.array(list(account.ret.index))
+    plt.fill_between(x, max(max(account.ret.rev), max(account.ret.benchmark)),
+                     min(min(account.ret.rev), min(account.ret.benchmark)),
+                     where=((x <= account.drawdown_end) &
+                            (x >= account.drawdown_start)),
+                     facecolor='lightsteelblue',
+                     alpha=0.4)
     plt.legend()
     plt.show()
 
@@ -329,7 +328,7 @@ def stock_filter(account):
     # 去掉含有NaN值的股票，按yoyop降序排序
     all_stock_df = all_stock_df.dropna().sort_values('yoyop', ascending=False)
     # 取前50支股票
-    selected_stock_df = all_stock_df[:50]
+    selected_stock_df = all_stock_df[:5]
     # 将选取的股票代码存入buylist
     buylist = list(selected_stock_df['secid'])
     # 输出选股情况
@@ -354,12 +353,12 @@ def handle_data(account):
 
 
 print("Hello world!")
-start_date = '2018-01-01'
-end_date = '2018-07-27'
-capital_base = 1000000
+start_date = '2015-01-01'
+end_date = '2015-12-31'
+capital_base = 5000000
 freq = 1
 benchmark = ['430002.OC']
-universe = list(pd.read_csv("All stocks.csv")['secid'])[:75]
+universe = list(pd.read_csv("All stocks.csv")['secid'])
 
 ###############################################################################
 #                               Backtest begins                               #
