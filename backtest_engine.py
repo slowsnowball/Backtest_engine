@@ -99,7 +99,7 @@ class account:
             print("Benchmark ", self.benchmark, " data unavailable.")
 
         # 交易日列表
-        self.trade_days = self.ini_dic[self.universe[0]].index
+        self.trade_days = self.benchmark_data.index
         # 调用下面的get_order_days函数算出下单日列表
         self.order_days = self.get_order_days()
 
@@ -144,15 +144,18 @@ def order_to(target):
         # Sell stocks in holding but not in target
         for stock in list(h_amount.index):
             if stock not in list(target.index):
-                stock_data = ini_dic[stock].loc[date.strftime(
-                    '%Y-%m-%d')].fillna(0)
-                price = stock_data['open']
-                account.cash += h_amount.loc[stock, 'hamount'] *\
-                    (price-slippage) * (1-tax-commission)
-                # print("cash after", stock, account.cash)
-                print('order: ', stock, 'amount ',
-                      int(0-h_amount.loc[stock, 'hamount']))
-                h_amount.loc[stock, 'hamount'] = 0
+                try:
+                    stock_data = ini_dic[stock].loc[date.strftime(
+                        '%Y-%m-%d')].fillna(0)
+                    price = stock_data['open']
+                    account.cash += h_amount.loc[stock, 'hamount'] *\
+                        (price-slippage) * (1-tax-commission)
+                    # print("cash after", stock, account.cash)
+                    print('order: ', stock, 'amount ',
+                          int(0-h_amount.loc[stock, 'hamount']))
+                    h_amount.loc[stock, 'hamount'] = 0
+                except Exception:
+                    h_amount.loc[stock, 'hamount'] = 0
         h_amount = h_amount[h_amount['hamount'] != 0]
         # print("cash: ", account.cash)
 
@@ -273,7 +276,8 @@ def result_display(account):
                             'Strategy annual return':
                             '%.2f%%' % (Ra*100),
                             'Max drawdown':
-                            '%.2f%%' % (account.ret.iloc[-1].max_drawdown*100), 'Max drawdown interval':
+                            '%.2f%%' % (account.ret.iloc[-1].max_drawdown*100),
+                            'Max drawdown interval':
                             str(account.drawdown_start.strftime('%Y-%m-%d')
                                 + ' to '
                                 + account.drawdown_end.strftime('%Y-%m-%d'))
@@ -319,14 +323,23 @@ def stock_filter(account):
     """
     # 将date这一交易日的股票数据取出存到一个新的dataframe中
     all_stock_df = pd.DataFrame()
+    mktmaker_information = pd.read_csv(
+        'market_maker_information.csv', index_col="secid")
+    amount_information = pd.read_csv(
+        'amount_information.csv', index_col="secid")
     # 遍历ini_dic中所有的股票
     for stock in list(account.ini_dic.keys()):
-        # 将date这一天的数据存入all_stock_df中
-        all_stock_df = all_stock_df.append(account.ini_dic[stock].
-                                           loc[date.strftime('%Y-%m-%d')])
+        # 将date这一天的数据存入all_stock_df中，去掉无数据的
+        if mktmaker_information.loc[stock, date.strftime('%Y-%m-%d')] == 1 and\
+           amount_information.loc[stock, date.strftime('%Y-%m-%d')] >= 1000000:
+            try:
+                all_stock_df = all_stock_df.append
+                (account.ini_dic[stock].loc[date.strftime('%Y-%m-%d')])
+            except Exception:
+                pass
 
-    # 去掉含有NaN值的股票，按yoyop降序排序
-    all_stock_df = all_stock_df.dropna().sort_values('yoyop', ascending=False)
+    # 按yoyop降序排序
+    all_stock_df = all_stock_df.sort_values('yoyop', ascending=False)
     # 取前50支股票
     selected_stock_df = all_stock_df[:5]
     # 将选取的股票代码存入buylist
@@ -379,11 +392,13 @@ h_amount = pd.DataFrame({'hamount': [0],
 for date in list(account.trade_days):
     account.today_capital = 0
     for stock in list(h_amount.index):
-        stock_data = account.ini_dic[stock].loc[date.strftime('%Y-%m-%d')].\
-            fillna(0)
-        # stock_data = account.ini_dic[stock].loc[date]
-        price = stock_data['open']
-        account.today_capital += price * h_amount.loc[stock, 'hamount']
+        try:
+            stock_data = account.ini_dic[stock].loc[
+                date.strftime('%Y-%m-%d')].fillna(0)
+            price = stock_data['open']
+            account.today_capital += price * h_amount.loc[stock, 'hamount']
+        except Exception:
+            pass
     account.today_capital += account.cash
 
     print("cash: ", account.cash)
