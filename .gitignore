@@ -3,3 +3,8 @@
 .DS_Store
 *.ipynb
 /test.py
+/auto/result.el
+/result.org
+/result.org~
+/result.pdf
+/result.tex

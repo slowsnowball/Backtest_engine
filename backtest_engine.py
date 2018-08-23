@@ -79,11 +79,14 @@ class account:
                 data = ssdata.get_data(secid=stock,
                                        start_date=self.start_date,
                                        end_date=self.end_date,
-                                       field='open,yoyop').dropna()
+                                       field='open,yoyop').dropna().\
+                    sort_index()
                 self.ini_dic[stock] = data
-                print("Succeed: ", stock)
+                print("Succeed: ", stock, self.universe.index(stock)+1, '/',
+                      len(self.universe))
             except Exception:
-                print(stock, "data unavailable.")
+                print(stock, "data unavailable.", self.universe.index(
+                    stock)+1, '/', len(self.universe))
 
         # 把获取不到数据的股票从universe中去掉
         self.universe = list(self.ini_dic.keys())
@@ -133,7 +136,6 @@ def order_to(target):
     ini_dic = account.ini_dic
     today_capital = account.today_capital
     slippage = account.slippage
-    # print("initial cash: ", account.cash)
 
     # 如果date在下单日，就需要进行调仓
     if date in order_days:
@@ -145,25 +147,24 @@ def order_to(target):
         for stock in list(h_amount.index):
             if stock not in list(target.index):
                 try:
-                    stock_data = ini_dic[stock].loc[date.strftime(
-                        '%Y-%m-%d')].fillna(0)
+                    stock_data = ini_dic[stock].loc[date.strftime("%Y-%m-%d")]
                     price = stock_data['open']
                     account.cash += h_amount.loc[stock, 'hamount'] *\
                         (price-slippage) * (1-tax-commission)
-                    # print("cash after", stock, account.cash)
                     print('order: ', stock, 'amount ',
                           int(0-h_amount.loc[stock, 'hamount']))
-                    h_amount.loc[stock, 'hamount'] = 0
+                    h_amount.loc[stock, 'hamount'] = -1
                 except Exception:
-                    h_amount.loc[stock, 'hamount'] = 0
-        h_amount = h_amount[h_amount['hamount'] != 0]
+                    h_amount.loc[stock, 'hamount'] = -1
+        h_amount = h_amount[h_amount['hamount'] != -1]
         # print("cash: ", account.cash)
 
         # Deal with stocks in target
         for stock in list(target.index):
             stock_data = ini_dic[stock].loc[date.strftime(
-                '%Y-%m-%d')].fillna(0)
+                "%Y-%m-%d")].fillna(0)
             price = stock_data['open']
+            # price = stock_data.loc[date.strftime('%Y-%m-%d'), 'open']
 
             # Buy stocks in target but not in holding
             if stock not in list(h_amount.index):
@@ -190,7 +191,7 @@ def order_to(target):
                                     0, -1):
                     if account.cash - (number*100 -
                                        h_amount.loc[stock, 'hamount']) *\
-                       (price+slippage) * (1+commission) < 0:
+                            (price+slippage) * (1+commission) < 0:
                         continue
                     else:
                         account.cash -= (number*100 -
@@ -252,10 +253,14 @@ def order_pct_to(pct_target):
 
     # 将pct_target中的仓位百分比数据转化为target中的股数
     for stock in list(pct_target.index):
-        stock_data = ini_dic[stock].loc[date.strftime('%Y-%m-%d')]
+        stock_data = ini_dic[stock].loc[date.strftime("%Y-%m-%d")]
         price = stock_data['open']
+        # price = stock_data.loc[date.strftime('%Y-%m-%d'), 'open']
+        # print("today_capital: ", today_capital)
         target[stock] = (pct_target[stock]*today_capital) / price
 
+    print("pct_target: ", pct_target)
+    print("target: ", target)
     # 调用order_to函数
     order_to(target)
 
@@ -324,17 +329,17 @@ def stock_filter(account):
     # 将date这一交易日的股票数据取出存到一个新的dataframe中
     all_stock_df = pd.DataFrame()
     mktmaker_information = pd.read_csv(
-        'market_maker_information.csv', index_col="secid")
+        'market_maker_information1.csv', index_col="secid")
     amount_information = pd.read_csv(
-        'amount_information.csv', index_col="secid")
+        'amount_information1.csv', index_col="secid")
     # 遍历ini_dic中所有的股票
     for stock in list(account.ini_dic.keys()):
         # 将date这一天的数据存入all_stock_df中，去掉无数据的
         if mktmaker_information.loc[stock, date.strftime('%Y-%m-%d')] == 1 and\
            amount_information.loc[stock, date.strftime('%Y-%m-%d')] >= 1000000:
             try:
-                all_stock_df = all_stock_df.append
-                (account.ini_dic[stock].loc[date.strftime('%Y-%m-%d')])
+                all_stock_df = all_stock_df.append(
+                    account.ini_dic[stock].loc[date.strftime('%Y-%m-%d')])
             except Exception:
                 pass
 
@@ -361,13 +366,13 @@ def handle_data(account):
     # 这里采用平均配仓的方式
     for stock in selected_stocks:
         positions[stock] = 1/len(selected_stocks)
-    # 将仓位传入下单函数进行下单
+        # 将仓位传入下单函数进行下单
     order_pct_to(positions)
 
 
 print("Hello world!")
-start_date = '2015-01-01'
-end_date = '2015-12-31'
+start_date = '2015-06-01'
+end_date = '2018-06-01'
 capital_base = 5000000
 freq = 1
 benchmark = ['430002.OC']
@@ -393,8 +398,8 @@ for date in list(account.trade_days):
     account.today_capital = 0
     for stock in list(h_amount.index):
         try:
-            stock_data = account.ini_dic[stock].loc[
-                date.strftime('%Y-%m-%d')].fillna(0)
+            stock_data = account.ini_dic[stock].loc[date.strftime(
+                "%Y-%m-%d")].fillna(0)
             price = stock_data['open']
             account.today_capital += price * h_amount.loc[stock, 'hamount']
         except Exception:
