@@ -326,6 +326,7 @@ def stock_filter(account):
     """
     根据yoyop进行选股的函数。选yoyop前50的股票。
     """
+    global selected
     # 将date这一交易日的股票数据取出存到一个新的dataframe中
     all_stock_df = pd.DataFrame()
     mktmaker_information = pd.read_csv(
@@ -351,6 +352,8 @@ def stock_filter(account):
     buylist = list(selected_stock_df['secid'])
     # 输出选股情况
     print(date.strftime('%Y-%m-%d'), "selected stocks: ", buylist)
+    selected = selected.append(pd.DataFrame(
+        {"selected stocks": str(buylist)}, index=[date.strftime('%Y-%m-%d')]))
     return buylist
 
 
@@ -371,9 +374,9 @@ def handle_data(account):
 
 
 print("Hello world!")
-start_date = '2015-06-01'
+start_date = '2015-07-01'
 end_date = '2018-06-01'
-capital_base = 5000000
+capital_base = 1000000
 freq = 1
 benchmark = ['430002.OC']
 universe = list(pd.read_csv("All stocks.csv")['secid'])
@@ -393,6 +396,7 @@ h_amount = pd.DataFrame({'hamount': [0],
                          'price': [0],
                          'value': [0],
                          'percent': [0]}, index=account.universe)
+selected = pd.DataFrame()
 
 for date in list(account.trade_days):
     account.today_capital = 0
@@ -410,4 +414,5 @@ for date in list(account.trade_days):
     print("today_capital: ", account.today_capital)
     handle_data(account)
 
+selected.to_csv(str("with_selected_stocks_information5.csv"))
 result_display(account)
