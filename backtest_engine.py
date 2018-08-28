@@ -128,7 +128,7 @@ def order_to(target):
     """
     下单到多少股。
     """
-    global h_amount
+    global h_amount, capacity
     trade_days = account.trade_days
     order_days = account.order_days
     tax = account.tax
@@ -326,7 +326,7 @@ def stock_filter(account):
     """
     根据yoyop进行选股的函数。选yoyop前50的股票。
     """
-    global selected
+    global selected, mktmaker_information, amount_information
     # 将date这一交易日的股票数据取出存到一个新的dataframe中
     all_stock_df = pd.DataFrame()
     mktmaker_information = pd.read_csv(
@@ -352,6 +352,7 @@ def stock_filter(account):
     buylist = list(selected_stock_df['secid'])
     # 输出选股情况
     print(date.strftime('%Y-%m-%d'), "selected stocks: ", buylist)
+
     selected = selected.append(pd.DataFrame(
         {"selected stocks": str(buylist)}, index=[date.strftime('%Y-%m-%d')]))
     return buylist
@@ -414,5 +415,5 @@ for date in list(account.trade_days):
     print("today_capital: ", account.today_capital)
     handle_data(account)
 
-selected.to_csv(str("with_selected_stocks_information5.csv"))
+selected.to_csv("with_selected_stocks_information5.csv")
 result_display(account)

@@ -1,0 +1,104 @@
+% Created 2018-08-27 一 13:30
+% Intended LaTeX compiler: xelatex
+\documentclass[11pt]{article}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{xeCJK}
+\usepackage{xcolor}
+\usepackage{listings}
+\setCJKmainfont{Songti SC}
+\usepackage{float}
+\setlength\parindent{0pt}
+\usepackage[font=small]{caption}
+\captionsetup[table]{name=表}
+\captionsetup[figure]{name=图}
+\textwidth=6.6in
+\textheight=8.9in
+\headheight=0.0in
+\oddsidemargin=0.0in
+\headsep=0.0in
+\topmargin=0.0in
+\def\baselinestretch{1.3}
+\lstset{numbers=left,
+basicstyle=\linespread{1.0}\small\ttfamily,
+numberstyle=\tiny,
+keywordstyle= \color{blue!70},commentstyle=\color{red!50!green!50!blue!50},
+frame=shadowbox,
+rulesepcolor= \color{red!20!green!20!blue!20},
+breaklines=true,
+backgroundcolor=\color[rgb]{0.91,0.91,0.91},
+framextopmargin=2pt,
+framexbottommargin=2pt,
+abovecaptionskip=-3pt,
+belowcaptionskip=3pt,
+xleftmargin=0em,
+xrightmargin=0em
+}
+\hypersetup{
+colorlinks,
+linkcolor={red!50!black},
+citecolor={blue!50!black},
+urlcolor={blue!80!black}
+}
+\author{Shihao Liu}
+\date{\today}
+\title{新三板选股结果}
+\hypersetup{
+ pdfauthor={Shihao Liu},
+ pdftitle={新三板选股结果},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.1 (Org mode 9.1.9)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+
+\section{Backtest results}
+\label{sec:orgadaca69}
+\subsection{选5支，逐年回测}
+\label{sec:org6828438}
+\begin{center}
+\begin{tabular}{lllll}
+\hline
+Backtest Interval & Return & Annual Return & Max Drawdown & Max Drawdown Interval\\
+\hline
+2015/6/1-2016/6/1 & 23.07\% & 21.12\% & 18.20\% & 2015/6/1-2015/10/8\\
+ &  &  &  & \\
+2016/6/1-2017/6/1 & 20.36\% & 18.65\% & 9.97\% & 2016/6/1-2016/7/1\\
+ &  &  &  & \\
+2017/6/1-2018/6/1 & 25.32\% & 23.16\% & 4.75\% & 2018/2/1-2018/4/2\\
+ &  &  &  & \\
+2015/6/1-2018/6/1 & 85.86\% & 22.27\% & 18.20\% & 2015/6/1-2015/10/8\\
+\hline
+\end{tabular}
+\end{center}
+
+
+\subsection{营业利润增长率选股，考虑是否可交易}
+\label{sec:orgbd80eaf}
+\begin{table}[H]
+\caption{营业利润增长率选5支，考虑是否可交易，2015/7/1 - 2018/6/1}
+\centering
+\begin{tabular}{rllllr}
+\hline
+选股数量 & 策略收益 & 策略年化收益 & 最大回撤 & 最大回撤区间 & 收益回撤比\\
+\hline
+5 & 121.16\% & 30.29\% & 9.67\% & 2016/6/1-2016/7/1 & 3.13\\
+10 & 70.59\% & 19.49\% & 14.46\% & 2017/12/1-2018/4/2 & 1.34\\
+20 & 23.23\% & 7.21\% & 17.87\% & 2017/12/1-2018/5/2 & 0.40\\
+50 & 1.00\% & 0.33\% & 18.36\% & 2017/4/5-2018/6/1 & 0.01\\
+100 & 1.13\% & 0.37\% & 20.14\% & 2017/4/5-2018/6/1 & 0.01\\
+\hline
+\end{tabular}
+\end{table}
+\end{document}

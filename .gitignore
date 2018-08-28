@@ -10,3 +10,6 @@
 /result.tex
 *.png
 *.html
+/auto
+*.org~
+*.tex~
