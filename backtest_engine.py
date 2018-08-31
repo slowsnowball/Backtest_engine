@@ -128,7 +128,7 @@ def order_to(target):
     """
     下单到多少股。
     """
-    global h_amount, capacity
+    global h_amount
     trade_days = account.trade_days
     order_days = account.order_days
     tax = account.tax
@@ -322,17 +322,21 @@ def initialize(account):
     pass
 
 
+global volume_each_month
+volume_each_month = list()
+
+
 def stock_filter(account):
     """
-    根据yoyop进行选股的函数。选yoyop前50的股票。
+    根据yoyop进行选股的函数。选yoyop前n的股票。
     """
-    global selected, mktmaker_information, amount_information
+    global selected
     # 将date这一交易日的股票数据取出存到一个新的dataframe中
     all_stock_df = pd.DataFrame()
     mktmaker_information = pd.read_csv(
-        'market_maker_information1.csv', index_col="secid")
+        'market_maker_information.csv', index_col="secid")
     amount_information = pd.read_csv(
-        'amount_information1.csv', index_col="secid")
+        'amount_information.csv', index_col="secid")
     # 遍历ini_dic中所有的股票
     for stock in list(account.ini_dic.keys()):
         # 将date这一天的数据存入all_stock_df中，去掉无数据的
@@ -346,15 +350,23 @@ def stock_filter(account):
 
     # 按yoyop降序排序
     all_stock_df = all_stock_df.sort_values('yoyop', ascending=False)
-    # 取前50支股票
+    # 取前n支股票
     selected_stock_df = all_stock_df[:5]
+    # 增加交易额
+    selected_stock_df['amount'] = None
+    selected_stock_df = selected_stock_df.set_index('secid')
+    for stock in selected_stock_df.index:
+        selected_stock_df['amount'][stock] = amount_information.loc[
+            stock, date. strftime('%Y-%m-%d')]
+    # 取交易额之和的十分之一作为该月的策略容量
+    volume_each_month.append(sum(selected_stock_df['amount']) / 10)
     # 将选取的股票代码存入buylist
-    buylist = list(selected_stock_df['secid'])
+    buylist = selected_stock_df.index
     # 输出选股情况
-    print(date.strftime('%Y-%m-%d'), "selected stocks: ", buylist)
-
-    selected = selected.append(pd.DataFrame(
-        {"selected stocks": str(buylist)}, index=[date.strftime('%Y-%m-%d')]))
+    print(date.strftime('%Y-%m-%d'), "selected stocks: ", list(buylist))
+    # # 向selected中填入该月的选股情况
+    # selected = selected.append(pd.DataFrame(
+    #     {"selected stocks": str(buylist)}, index=[date.strftime('%Y-%m-%d')]))
     return buylist
 
 
@@ -415,5 +427,14 @@ for date in list(account.trade_days):
     print("today_capital: ", account.today_capital)
     handle_data(account)
 
-selected.to_csv("with_selected_stocks_information5.csv")
+# selected.to_csv(str("selected_stocks_information5.csv"))
 result_display(account)
+
+# 输出策略容量结果
+volume_final = min(volume_each_month)
+volumes = list([min(volume_each_month[:12]), min(
+    volume_each_month[12:24]), min(volume_each_month[24:])])
+print("Market volume(3 years): ", volume_final)
+print("Market volume(2015.7 - 2016.6: ", volumes[0])
+print("Market volume(2016.7 - 2017.6: ", volumes[1])
+print("Market volume(2017.7 - 2018.6: ", volumes[2])
