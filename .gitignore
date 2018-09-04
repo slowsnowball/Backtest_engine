@@ -15,3 +15,5 @@
 *.tex~
 新三板回测报告v0.5/
 new_third_board_backtest_report/
+*.pdf
+*.tex
